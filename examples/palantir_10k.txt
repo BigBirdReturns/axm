@@ -1,0 +1,42 @@
+Palantir Technologies Inc.
+Form 10-K Annual Report
+Fiscal Year Ended December 31, 2024
+
+BUSINESS OVERVIEW
+
+Palantir Technologies Inc. is a software company headquartered in Denver, Colorado. 
+The company was founded in 2003 by Peter Thiel, Alex Karp, and others. CEO Alex Karp 
+has led the company since its founding.
+
+FINANCIAL HIGHLIGHTS
+
+For fiscal year 2024, we achieved the following results:
+
+Total Revenue: $2.87 billion
+- Government Revenue: $1.72 billion (60% of total)
+- Commercial Revenue: $1.15 billion (40% of total)
+
+Revenue Growth: 25% year-over-year
+- Government Growth: 18% year-over-year
+- Commercial Growth: 37% year-over-year
+
+Profitability:
+Net Income: $462 million
+Operating Margin: 16%
+Free Cash Flow: $730 million
+
+GUIDANCE
+
+For fiscal year 2025, we expect:
+- Total Revenue: $3.5 billion to $3.7 billion
+- Revenue Growth: 22% to 29%
+- Operating Margin: 18% to 20%
+
+RISK FACTORS
+
+- We have a history of operating losses prior to 2023
+- Significant concentration in government contracts (60% of revenue)
+- Intense competition from established technology companies including Microsoft, 
+  Amazon Web Services, and Google Cloud
+- Reliance on key personnel, particularly CEO Alex Karp
+- Geopolitical risks affecting government spending
