@@ -2,6 +2,59 @@
 
 All notable changes to AXM will be documented in this file.
 
+## [0.5.2] - 2024-12-11
+
+### Added
+- **Universal Intake Layer** - Auto-routes sources to adapter or compiler path
+- **Structured Data Adapters** - XBRL, iCalendar, RSS feed parsing at confidence 1.0
+- **Source Detection** - Automatic detection of XML, JSON-LD, XBRL, iCal, etc.
+- **Program Merging** - `merge_programs()` combines multiple sources into unified space
+- **Container Extraction** - PDF, Word, Excel, PowerPoint text extraction (optional deps)
+- `compile_universal()` - Single entry point for any source type
+- `detect_source()` - Returns source type and recommended processing path
+- `list_adapters()` - Lists available structured data adapters
+- `avg_confidence()` - Calculate average confidence across program nodes
+- New enums: `SourceType`, `ProcessingPath`
+- `AdapterRegistry` for pluggable adapter system
+- `BaseAdapter` class for custom adapter development
+- Sample files: `sample_10k.xbrl`, `sample_calendar.ics`
+- `intake_demo.py` - Demonstrates two-path architecture
+- 13 new tests for intake layer (47 total)
+
+### Changed
+- README updated to document universal intake
+- Module exports expanded with intake types
+
+### Architecture
+```
+STRUCTURED (XBRL, FHIR, etc.)    UNSTRUCTURED (PDF, text)
+         ↓                              ↓
+    Adapter path                 Compiler path
+    Confidence: 1.0              Confidence: varies
+         ↓                              ↓
+         └──────→ MERGED SPACE ←────────┘
+```
+
+## [0.5.1] - 2024-12-11
+
+### Fixed
+- **Schema version mismatch** - IR_SCHEMA_VERSION now correctly says "0.5"
+- **Negation handling** - "no growth" no longer triggers GROWTH claim, properly flips to DECLINE
+- **Table detection** - Now handles Markdown alignment syntax (`:---:`, `:---|`)
+- **Citation detection** - References sections properly classified as CITATION chunks
+
+### Added
+- `ChunkType.CITATION` for bibliography/reference entries
+- `Node.contextual_hash()` method for chunk-aware deduplication
+- Context-aware lexer that tracks section headings
+- Negation patterns in Tier 2 claim extraction
+- 4 new tests (negation, citations, tables)
+
+### Changed
+- Lexer now maintains section context for smarter classification
+- Chunk dataclass has new `context` field for parent heading info
+- 34 tests total (was 30)
+
 ## [0.5.0] - 2024-12-11
 
 ### Added

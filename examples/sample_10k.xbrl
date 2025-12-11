@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance"
+            xmlns:us-gaap="http://fasb.org/us-gaap/2020-01-31"
+            xmlns:iso4217="http://www.xbrl.org/2003/iso4217">
+    
+    <xbrli:context id="FY2024">
+        <xbrli:entity>
+            <xbrli:identifier scheme="http://www.sec.gov/CIK">0001234567</xbrli:identifier>
+        </xbrli:entity>
+        <xbrli:period>
+            <xbrli:startDate>2024-01-01</xbrli:startDate>
+            <xbrli:endDate>2024-12-31</xbrli:endDate>
+        </xbrli:period>
+    </xbrli:context>
+    
+    <xbrli:context id="Q4_2024">
+        <xbrli:entity>
+            <xbrli:identifier scheme="http://www.sec.gov/CIK">0001234567</xbrli:identifier>
+        </xbrli:entity>
+        <xbrli:period>
+            <xbrli:instant>2024-12-31</xbrli:instant>
+        </xbrli:period>
+    </xbrli:context>
+    
+    <xbrli:unit id="USD">
+        <xbrli:measure>iso4217:USD</xbrli:measure>
+    </xbrli:unit>
+    
+    <xbrli:unit id="shares">
+        <xbrli:measure>xbrli:shares</xbrli:measure>
+    </xbrli:unit>
+    
+    <!-- Balance Sheet Items -->
+    <us-gaap:Assets contextRef="Q4_2024" unitRef="USD" decimals="-6">15000000000</us-gaap:Assets>
+    <us-gaap:CashAndCashEquivalents contextRef="Q4_2024" unitRef="USD" decimals="-6">3200000000</us-gaap:CashAndCashEquivalents>
+    <us-gaap:AccountsReceivable contextRef="Q4_2024" unitRef="USD" decimals="-6">1800000000</us-gaap:AccountsReceivable>
+    <us-gaap:Inventory contextRef="Q4_2024" unitRef="USD" decimals="-6">2100000000</us-gaap:Inventory>
+    
+    <us-gaap:Liabilities contextRef="Q4_2024" unitRef="USD" decimals="-6">8500000000</us-gaap:Liabilities>
+    <us-gaap:LongTermDebt contextRef="Q4_2024" unitRef="USD" decimals="-6">4200000000</us-gaap:LongTermDebt>
+    <us-gaap:AccountsPayable contextRef="Q4_2024" unitRef="USD" decimals="-6">1100000000</us-gaap:AccountsPayable>
+    
+    <us-gaap:StockholdersEquity contextRef="Q4_2024" unitRef="USD" decimals="-6">6500000000</us-gaap:StockholdersEquity>
+    <us-gaap:RetainedEarnings contextRef="Q4_2024" unitRef="USD" decimals="-6">4800000000</us-gaap:RetainedEarnings>
+    
+    <!-- Income Statement Items -->
+    <us-gaap:Revenues contextRef="FY2024" unitRef="USD" decimals="-6">12400000000</us-gaap:Revenues>
+    <us-gaap:CostOfRevenue contextRef="FY2024" unitRef="USD" decimals="-6">7200000000</us-gaap:CostOfRevenue>
+    <us-gaap:GrossProfit contextRef="FY2024" unitRef="USD" decimals="-6">5200000000</us-gaap:GrossProfit>
+    <us-gaap:OperatingExpenses contextRef="FY2024" unitRef="USD" decimals="-6">3100000000</us-gaap:OperatingExpenses>
+    <us-gaap:OperatingIncome contextRef="FY2024" unitRef="USD" decimals="-6">2100000000</us-gaap:OperatingIncome>
+    <us-gaap:NetIncome contextRef="FY2024" unitRef="USD" decimals="-6">1650000000</us-gaap:NetIncome>
+    <us-gaap:EarningsPerShare contextRef="FY2024" unitRef="USD" decimals="2">8.25</us-gaap:EarningsPerShare>
+    
+</xbrli:xbrl>

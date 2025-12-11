@@ -426,6 +426,12 @@ class Tier2:
         "COMPETITIVE": ["compete", "competitor", "market share", "differentiate", "versus", "beat"],
     }
     
+    # Negation patterns that flip claim polarity
+    NEGATION_PATTERNS = [
+        r'\bno\s+', r'\bnot\s+', r'\bwithout\s+', r'\black\s+of\s+',
+        r'\bfailed\s+to\s+', r'\bunable\s+to\s+', r'\bdid\s+not\s+',
+    ]
+    
     SENTIMENT_KEYWORDS = {
         "POSITIVE": ["strong", "excellent", "outstanding", "record", "beat", "exceed", "robust"],
         "NEGATIVE": ["weak", "poor", "disappointing", "miss", "below", "challenging", "difficult"],
@@ -439,19 +445,40 @@ class Tier2:
         results = []
         text = chunk.content.lower()
         
+        # Check for negation in the text
+        has_negation = any(re.search(pat, text) for pat in self.NEGATION_PATTERNS)
+        
         for claim_type, keywords in self.CLAIM_KEYWORDS.items():
-            hits = sum(1 for k in keywords if k in text)
+            hits = 0
+            for k in keywords:
+                # Check if keyword appears near negation
+                for match in re.finditer(re.escape(k), text):
+                    start = max(0, match.start() - 20)
+                    context = text[start:match.start()]
+                    
+                    # Skip if negated
+                    is_negated = any(re.search(pat, context) for pat in self.NEGATION_PATTERNS)
+                    if not is_negated:
+                        hits += 1
+            
             if hits > 0:
+                # Flip polarity if overall context is negated
+                actual_type = claim_type
+                if has_negation and claim_type == "GROWTH":
+                    actual_type = "DECLINE"
+                elif has_negation and claim_type == "DECLINE":
+                    actual_type = "GROWTH"
+                
                 intensity = min(1.0, hits * 0.25)
                 results.append(Extraction(
                     ext_id=self._ids.next("ext"),
                     chunk_id=chunk.chunk_id,
                     entity_type="ClaimType",
-                    label=f"{claim_type} claim",
+                    label=f"{actual_type} claim",
                     major=8, type_=1,
                     value=intensity,
                     tier=2,
-                    confidence=0.7,
+                    confidence=0.6 if has_negation else 0.7,  # Lower confidence if negation involved
                     extractor="tier2:claim",
                 ))
         

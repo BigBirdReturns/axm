@@ -107,7 +107,7 @@ class IncrementalPlan:
 class Compiler:
     """The AXM Semantic Compiler with incremental support."""
     
-    VERSION = "0.5.0"
+    VERSION = "0.5.2"
     
     def __init__(self, config: Optional[Config] = None):
         self.config = config or Config.default()

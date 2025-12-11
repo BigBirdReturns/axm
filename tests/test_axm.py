@@ -19,6 +19,7 @@ from axm import (
     Lexer, Parser, Emitter,
     MockExecutor, RetryExecutor,
 )
+from axm.lexer import ChunkType
 from axm.ids import IDGenerator
 
 
@@ -383,6 +384,239 @@ class TestIncremental:
         assert plan.efficiency > 0.3  # At least 30% reused
 
 
+class TestNegation:
+    """Test negation handling in Tier 2."""
+    
+    def test_no_growth_becomes_decline(self):
+        from axm import compile, query, Config, Major
+        
+        doc = "The company showed no growth this quarter."
+        program = compile(doc, Config.no_llm())
+        space = query(program)
+        
+        # Should not have GROWTH claim, may have DECLINE
+        claims = [n.label for n in space.query(major=Major.ABSTRACT)]
+        assert "GROWTH claim" not in claims
+    
+    def test_positive_growth_detected(self):
+        from axm import compile, query, Config, Major
+        
+        doc = "The company showed strong growth this quarter."
+        program = compile(doc, Config.no_llm())
+        space = query(program)
+        
+        claims = [n.label for n in space.query(major=Major.ABSTRACT)]
+        assert "GROWTH claim" in claims
+
+
+class TestCitations:
+    """Test citation detection."""
+    
+    def test_references_section(self):
+        from axm.lexer import ChunkType
+        
+        doc = """
+        Introduction
+        
+        This paper discusses AI.
+        
+        References
+        
+        [1] Smith, J. (2020). AI Methods.
+        [2] Jones, M. (2021). Machine Learning.
+        """
+        
+        lexer = Lexer()
+        chunks = lexer.lex(doc)
+        
+        # Should have at least one CITATION chunk
+        chunk_types = [c.chunk_type for c in chunks]
+        assert ChunkType.CITATION in chunk_types
+    
+    def test_table_with_alignment(self):
+        from axm.lexer import ChunkType
+        
+        doc = """| Name | Value |
+|:-----|------:|
+| Revenue | $500M |
+| Profit | $50M |"""
+        
+        lexer = Lexer()
+        chunks = lexer.lex(doc)
+        
+        # Should detect as TABLE
+        assert any(c.chunk_type == ChunkType.TABLE for c in chunks)
+
+
+class TestIntake:
+    """Test universal intake layer."""
+    
+    def test_detect_text(self):
+        from axm.intake import Detector, SourceType
+        
+        content = "This is plain text about revenue growth."
+        source_type, _ = Detector.detect(content)
+        assert source_type == SourceType.TEXT
+    
+    def test_detect_json(self):
+        from axm.intake import Detector, SourceType
+        
+        content = '{"name": "test", "value": 123}'
+        source_type, _ = Detector.detect(content)
+        assert source_type == SourceType.JSON
+    
+    def test_detect_json_ld(self):
+        from axm.intake import Detector, SourceType
+        
+        content = '{"@context": "http://schema.org", "@type": "Organization"}'
+        source_type, _ = Detector.detect(content)
+        assert source_type == SourceType.SCHEMA_ORG
+    
+    def test_detect_xbrl(self):
+        from axm.intake import Detector, SourceType
+        
+        content = '''<?xml version="1.0"?>
+        <xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance">
+        </xbrli:xbrl>'''
+        source_type, _ = Detector.detect(content)
+        assert source_type == SourceType.XBRL
+    
+    def test_detect_ical(self):
+        from axm.intake import Detector, SourceType
+        
+        content = "BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR"
+        source_type, _ = Detector.detect(content)
+        assert source_type == SourceType.ICAL
+    
+    def test_router_xbrl_to_adapter(self):
+        from axm.intake import Router, SourceType, ProcessingPath
+        
+        path = Router.route(SourceType.XBRL, "<xbrl>content</xbrl>")
+        assert path == ProcessingPath.ADAPTER
+    
+    def test_router_text_to_compiler(self):
+        from axm.intake import Router, SourceType, ProcessingPath
+        
+        path = Router.route(SourceType.TEXT, "plain text")
+        assert path == ProcessingPath.COMPILER
+    
+    def test_xbrl_adapter_parse(self):
+        from axm.intake import AdapterRegistry, SourceType
+        
+        xbrl_content = '''<?xml version="1.0"?>
+        <xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance"
+                    xmlns:us-gaap="http://fasb.org/us-gaap/2020">
+            <xbrli:context id="FY2024">
+                <xbrli:entity>
+                    <xbrli:identifier>TEST</xbrli:identifier>
+                </xbrli:entity>
+            </xbrli:context>
+            <xbrli:unit id="USD">
+                <xbrli:measure>iso4217:USD</xbrli:measure>
+            </xbrli:unit>
+            <us-gaap:Revenue contextRef="FY2024" unitRef="USD">1000000</us-gaap:Revenue>
+            <us-gaap:NetIncome contextRef="FY2024" unitRef="USD">250000</us-gaap:NetIncome>
+        </xbrli:xbrl>'''
+        
+        adapter = AdapterRegistry.get(SourceType.XBRL)
+        assert adapter is not None
+        
+        entities = adapter.parse(xbrl_content)
+        assert len(entities) >= 2
+        
+        labels = [e.label for e in entities]
+        assert any('Revenue' in label for label in labels)
+        assert any('Net Income' in label for label in labels)
+    
+    def test_ical_adapter_parse(self):
+        from axm.intake import AdapterRegistry, SourceType
+        
+        ical_content = """BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:20241215T090000Z
+DTEND:20241215T100000Z
+SUMMARY:Test Meeting
+END:VEVENT
+END:VCALENDAR"""
+        
+        adapter = AdapterRegistry.get(SourceType.ICAL)
+        assert adapter is not None
+        
+        entities = adapter.parse(ical_content)
+        assert len(entities) == 1
+        assert entities[0].label == "Test Meeting"
+        assert entities[0].major == 6  # Time
+    
+    def test_compile_universal_text(self):
+        from axm import compile_universal, query
+        
+        content = "Revenue grew 15% to $500 million in Q4 2024."
+        program = compile_universal(content)
+        
+        assert program is not None
+        assert len(program.nodes) > 0
+    
+    def test_compile_universal_xbrl(self):
+        from axm import compile_universal, avg_confidence
+        
+        xbrl_content = '''<?xml version="1.0"?>
+        <xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance"
+                    xmlns:us-gaap="http://fasb.org/us-gaap/2020">
+            <xbrli:context id="FY2024">
+                <xbrli:entity>
+                    <xbrli:identifier>TEST</xbrli:identifier>
+                </xbrli:entity>
+            </xbrli:context>
+            <xbrli:unit id="USD">
+                <xbrli:measure>iso4217:USD</xbrli:measure>
+            </xbrli:unit>
+            <us-gaap:Assets contextRef="FY2024" unitRef="USD">5000000</us-gaap:Assets>
+        </xbrli:xbrl>'''
+        
+        program = compile_universal(xbrl_content)
+        
+        assert program is not None
+        assert len(program.nodes) >= 1
+        
+        # Adapter path should have confidence 1.0
+        conf = avg_confidence(program)
+        assert conf == 1.0
+    
+    def test_merge_programs(self):
+        from axm import compile_universal, merge_programs, query
+        
+        text_content = "Company reported strong growth in Q4."
+        xbrl_content = '''<?xml version="1.0"?>
+        <xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance"
+                    xmlns:us-gaap="http://fasb.org/us-gaap/2020">
+            <xbrli:context id="FY2024">
+                <xbrli:entity><xbrli:identifier>TEST</xbrli:identifier></xbrli:entity>
+            </xbrli:context>
+            <xbrli:unit id="USD">
+                <xbrli:measure>iso4217:USD</xbrli:measure>
+            </xbrli:unit>
+            <us-gaap:Revenue contextRef="FY2024" unitRef="USD">1000000</us-gaap:Revenue>
+        </xbrli:xbrl>'''
+        
+        p1 = compile_universal(text_content)
+        p2 = compile_universal(xbrl_content)
+        
+        merged = merge_programs([p1, p2])
+        
+        # Merged should have nodes from both
+        assert len(merged.nodes) >= len(p1.nodes)
+        assert len(merged.nodes) >= len(p2.nodes)
+    
+    def test_list_adapters(self):
+        from axm import list_adapters
+        
+        adapters = list_adapters()
+        assert 'XBRL' in adapters
+        assert 'ICAL' in adapters
+        assert 'RSS' in adapters
+
+
 def run_all():
     """Run all tests manually."""
     test_classes = [
@@ -395,6 +629,9 @@ def run_all():
         TestIDGenerator,
         TestExecutor,
         TestIncremental,
+        TestNegation,
+        TestCitations,
+        TestIntake,
     ]
     
     passed = 0

@@ -11,7 +11,7 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Optional
 
 from .ids import IDGenerator
 
@@ -28,6 +28,7 @@ class ChunkType(Enum):
     TABLE = auto()
     KEY_VALUE = auto()
     LIST = auto()
+    CITATION = auto()  # References, bibliography entries
     METADATA = auto()
     CODE = auto()
     PROSE = auto()
@@ -44,6 +45,7 @@ class Chunk:
     end: int
     confidence: float = 1.0
     patterns: Dict[str, Any] = field(default_factory=dict)
+    context: Dict[str, Any] = field(default_factory=dict)  # Parent heading, section info
     
     @property
     def length(self) -> int:
@@ -75,10 +77,16 @@ class Patterns:
     LIST_ITEM = re.compile(r'^[\-\*]\s+(.+)$', re.M)
     NUMBERED = re.compile(r'^\d+\.\s+(.+)$', re.M)
     
+    # Improved table detection - handles alignment colons
     TABLE_PIPE = re.compile(r'^\|.+\|.+\|$', re.M)
     TABLE_TAB = re.compile(r'^.+\t.+\t.+$', re.M)
+    TABLE_SEPARATOR = re.compile(r'^\|?[\s:]*-+[\s:|-]*\|?$', re.M)  # |:---|:---:| style
     
     CODE_FENCE = re.compile(r'^```(\w*)\n(.*?)^```', re.M | re.S)
+    
+    # Citation/reference patterns
+    CITATION_HEADER = re.compile(r'^(?:References|Bibliography|Works Cited|Citations)\s*$', re.I | re.M)
+    CITATION_ENTRY = re.compile(r'^\[?\d+\]?\s*[A-Z]', re.M)  # [1] Author or 1. Author
     
     @classmethod
     def detect(cls, text: str) -> Dict[str, Any]:
@@ -105,12 +113,19 @@ class Patterns:
         if items:
             patterns["list_items"] = items
         
+        # Improved table detection
         if cls.TABLE_PIPE.search(text) or cls.TABLE_TAB.search(text):
-            patterns["has_table"] = True
+            # Verify it's actually a table by checking for separator row
+            if cls.TABLE_SEPARATOR.search(text) or cls.TABLE_TAB.search(text):
+                patterns["has_table"] = True
         
         code = cls.CODE_FENCE.findall(text)
         if code:
             patterns["code"] = [{"lang": lang, "code": c} for lang, c in code]
+        
+        # Citation detection
+        if cls.CITATION_ENTRY.search(text):
+            patterns["has_citations"] = True
         
         return patterns
 
@@ -124,10 +139,12 @@ class Lexer:
     
     def __init__(self):
         self._ids = IDGenerator()
+        self._current_section: Optional[str] = None  # Track section headers
     
     def lex(self, content: str) -> List[Chunk]:
         """Lex document into typed chunks."""
         self._ids.reset()
+        self._current_section = None
         
         stripped = content.strip()
         
@@ -141,7 +158,7 @@ class Lexer:
         return self._lex_text(content)
     
     def _lex_text(self, content: str) -> List[Chunk]:
-        """Lex text content."""
+        """Lex text content with section awareness."""
         chunks = []
         paragraphs = re.split(r'\n\s*\n', content)
         
@@ -155,15 +172,41 @@ class Lexer:
             end = start + len(para)
             pos = end
             
+            # Check if this is a section header
+            if self._is_section_header(para):
+                self._current_section = para.lower()
+            
             chunk = self._classify_paragraph(para, start, end)
             chunks.append(chunk)
         
         return chunks
     
+    def _is_section_header(self, text: str) -> bool:
+        """Check if text looks like a section header."""
+        # Short, title-case or all caps, no punctuation at end
+        if len(text) > 100:
+            return False
+        if text.endswith(('.', ',', ';', ':')):
+            return False
+        # Check for header patterns
+        if re.match(r'^#+\s+', text):  # Markdown header
+            return True
+        if re.match(r'^[A-Z][A-Z\s]+$', text):  # ALL CAPS
+            return True
+        if re.match(r'^(?:References|Bibliography|Abstract|Introduction|Conclusion|Methods|Results|Discussion)\s*$', text, re.I):
+            return True
+        return False
+    
     def _classify_paragraph(self, text: str, start: int, end: int) -> Chunk:
-        """Classify a paragraph by extraction tier."""
+        """Classify a paragraph by extraction tier with context awareness."""
         patterns = Patterns.detect(text)
         words = len(text.split())
+        
+        # Context-aware: Citations section
+        if self._current_section and 'reference' in self._current_section:
+            if patterns.get("has_citations") or patterns.get("list_items"):
+                return self._chunk(ChunkType.CITATION, text, 1, start, end, 
+                                   patterns=patterns, context={"section": self._current_section})
         
         if patterns.get("has_table"):
             return self._chunk(ChunkType.TABLE, text, 0, start, end, patterns=patterns)
@@ -198,6 +241,7 @@ class Lexer:
         start: int,
         end: int,
         patterns: Dict[str, Any] = None,
+        context: Dict[str, Any] = None,
     ) -> Chunk:
         """Create a chunk."""
         return Chunk(
@@ -208,6 +252,7 @@ class Lexer:
             start=start,
             end=end,
             patterns=patterns or {},
+            context=context or {},
         )
     
     def summary(self, chunks: List[Chunk]) -> Dict[str, Any]:

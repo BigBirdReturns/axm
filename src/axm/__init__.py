@@ -1,8 +1,8 @@
 """
-AXM - Semantic Compiler Foundation (v0.5)
+AXM - Semantic Compiler Foundation (v0.5.2)
 
 Compile documents once. Query forever. No LLM at runtime.
-Now with REAL incremental compilation.
+Now with unified intake: structured OR unstructured → same coordinate space.
 
 Quick start:
     from axm import compile, load, query
@@ -18,20 +18,21 @@ Quick start:
     for node in space.query(major=7):  # All quantities
         print(node.label, node.value)
 
-Incremental compilation:
-    from axm import compile, compile_incremental, load
+Universal intake (NEW):
+    from axm import compile_universal, merge_programs
     
-    # First compile
-    v1 = compile("document_v1.txt")
-    v1.write("output.axm")
+    # Works with any source type
+    p1 = compile_universal("report.pdf")       # Unstructured → compiler
+    p2 = compile_universal("financials.xbrl")  # Structured → adapter
     
-    # Later, after edits (only recompiles changed chunks)
-    v1 = load("output.axm")
-    v2, plan = compile_incremental("document_v2.txt", v1)
-    print(f"Reused {plan.reused_nodes} nodes, recompiled {plan.recompiled_nodes}")
+    # Merge into single space
+    merged = merge_programs([p1, p2])
+    
+    # Query unified knowledge
+    space = query(merged)
 """
 
-__version__ = "0.5.0"
+__version__ = "0.5.2"
 
 # Core types
 from .coords import (
@@ -98,6 +99,22 @@ from .executor import (
 # Chat
 from .chat import Chat, chat_repl
 
+# Intake (universal routing)
+from .intake import (
+    compile_universal,
+    merge_programs,
+    detect_source,
+    list_adapters,
+    avg_confidence,
+    SourceType,
+    ProcessingPath,
+    Detector,
+    Router,
+    AdapterRegistry,
+    BaseAdapter,
+    ExtractedEntity,
+)
+
 __all__ = [
     "__version__",
     "IR_SCHEMA_VERSION",
@@ -105,6 +122,8 @@ __all__ = [
     # Main API
     "compile",
     "compile_incremental",
+    "compile_universal",  # NEW
+    "merge_programs",     # NEW
     "load", 
     "query",
     "Chat",
@@ -127,6 +146,8 @@ __all__ = [
     "QuantityType",
     "TimeType",
     "AbstractType",
+    "SourceType",      # NEW
+    "ProcessingPath",  # NEW
     
     # Advanced
     "ProgramBuilder",
@@ -135,6 +156,15 @@ __all__ = [
     "Parser",
     "Emitter",
     "IDGenerator",
+    
+    # Intake (NEW)
+    "Detector",
+    "Router",
+    "AdapterRegistry",
+    "BaseAdapter",
+    "detect_source",
+    "list_adapters",
+    "avg_confidence",
     
     # Executors
     "MockExecutor",

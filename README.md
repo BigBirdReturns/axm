@@ -50,6 +50,43 @@ for node in space.query(label_contains="revenue"):
     print(f"{node.id}: {node.label}")
 ```
 
+## Universal Intake (v0.5.2)
+
+AXM auto-routes sources to the optimal processing path:
+
+```python
+from axm import compile_universal, merge_programs, query
+
+# Structured data → Adapter path (confidence 1.0)
+xbrl = compile_universal("financials.xbrl")    # XBRL → direct extraction
+cal = compile_universal("events.ics")          # iCal → direct extraction
+
+# Unstructured data → Compiler path (confidence varies)  
+text = compile_universal("earnings_call.txt")  # Text → lexer → parser
+
+# Merge into unified space
+merged = merge_programs([xbrl, cal, text])
+
+# Query by confidence
+space = query(merged)
+for node in space.all_nodes():
+    prov = merged.provenance.get(node.prov_id)
+    print(f"{node.label}: confidence {prov.confidence:.0%}")
+```
+
+**Two paths, one destination:**
+```
+STRUCTURED (schema exists)          UNSTRUCTURED (text soup)
+     XBRL, FHIR, iCal                 PDF, Word, transcripts
+          ↓                                   ↓
+     Adapter path                      Compiler path
+     Confidence: 1.0                   Confidence: varies
+          ↓                                   ↓
+          └───────────→ MERGED SPACE ←────────┘
+```
+
+**Available Adapters:** XBRL, iCalendar, RSS/Atom
+
 ## Incremental Compilation
 
 When documents change, AXM only reprocesses changed sections:

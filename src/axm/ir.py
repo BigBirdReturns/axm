@@ -144,6 +144,11 @@ class Node:
         content = f"{self.label}|{self.value}|{self.unit}"
         return hashlib.sha256(content.encode()).hexdigest()[:16]
     
+    def contextual_hash(self, chunk_id: str) -> str:
+        """Hash including chunk context - use for Tier 1+ to preserve duplicates in different contexts."""
+        content = f"{chunk_id}|{self.label}|{self.value}|{self.unit}"
+        return hashlib.sha256(content.encode()).hexdigest()[:16]
+    
     def to_dict(self) -> Dict[str, Any]:
         """Serialize to JSON-compatible dict."""
         d = {
