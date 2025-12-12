@@ -1,0 +1,33 @@
+[package]
+name = "axm-rs"
+version = "0.5.3"
+edition = "2021"
+description = "Rust implementation of AXM query engine with WASM bindings"
+authors = ["AXM"]
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "axm-cli"
+path = "src/bin.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde-wasm-bindgen = "0.6"
+thiserror = "1"
+chrono = { version = "0.4", features = ["serde"] }
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+sha2 = "0.10"
+base64 = "0.21"
+hex = "0.4"
+
+[target."cfg(target_arch = \"wasm32\")".dependencies]
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+console_error_panic_hook = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+assert-json-diff = "2"

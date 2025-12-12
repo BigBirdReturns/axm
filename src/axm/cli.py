@@ -289,7 +289,7 @@ def cmd_chat(args):
 
 def main():
     parser = argparse.ArgumentParser(description="AXM Semantic Compiler")
-    parser.add_argument("--version", action="version", version=f"AXM 0.5.2")
+    parser.add_argument("--version", action="version", version=f"AXM 0.5.3")
     
     sub = parser.add_subparsers(dest="command")
     

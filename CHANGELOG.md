@@ -2,6 +2,13 @@
 
 All notable changes to AXM will be documented in this file.
 
+## [0.5.3] - 2024-12-12
+
+### Changed
+- Bump package metadata and CLI reporting to version 0.5.3 to align with the latest GitHub release.
+- Update README clone instructions to point to the `BigBirdReturns/axm` repository and refresh the universal intake header.
+- Add `pytest.ini` so Python tests run without extra environment variables and make Rust parity checks opt-in via `AXM_RUN_RUST_TESTS`.
+
 ## [0.5.2] - 2024-12-11
 
 ### Added

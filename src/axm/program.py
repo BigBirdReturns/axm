@@ -32,7 +32,7 @@ class ProgramBuilder:
     Provides O(1) lookups via indices. No direct access to internal state.
     """
     
-    VERSION = "0.5.2"
+    VERSION = "0.5.3"
     
     def __init__(self, source: SourceInfo):
         self.source = source

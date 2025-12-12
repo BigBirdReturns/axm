@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axm"
-version = "0.5.2"
+version = "0.5.3"
 description = "Semantic compiler: compile documents into queryable coordinate programs"
 readme = "README.md"
 license = {text = "MIT"}
