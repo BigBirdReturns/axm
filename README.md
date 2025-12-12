@@ -24,7 +24,7 @@ pip install axm
 Or from source:
 
 ```bash
-git clone https://github.com/sandhuconsulting/axm.git
+git clone https://github.com/BigBirdReturns/axm.git
 cd axm
 pip install -e .
 ```
