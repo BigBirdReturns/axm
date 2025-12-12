@@ -32,7 +32,7 @@ Universal intake (NEW):
     space = query(merged)
 """
 
-__version__ = "0.5.2"
+__version__ = "0.5.3"
 
 # Core types
 from .coords import (
@@ -51,6 +51,8 @@ from .coords import (
 from .ir import (
     Node,
     Relation,
+    Derivation,
+    TemporalAlignment,
     Fork,
     ForkOption,
     Provenance,
@@ -137,6 +139,8 @@ __all__ = [
     "Coord",
     "Node",
     "Relation",
+    "Derivation",
+    "TemporalAlignment",
     "Program",
     "Space",
     

@@ -32,6 +32,17 @@ pytest tests/ -v
 - Keep functions focused and documented
 - Run `python -m py_compile src/axm/*.py` before committing
 
+## Committing changes and updating the repository
+
+Use the following checklist to keep the main branch healthy:
+
+1. Confirm the working tree is clean: `git status -sb`.
+2. Run the full test suite (for example, `PYTHONPATH=src pytest -q`) and fix any failures.
+3. Stage updates: `git add <files>` (or `git add -p` for selective staging).
+4. Commit with a concise, imperative message: `git commit -m "short summary"`.
+5. Push your branch to the remote: `git push origin <branch>`.
+6. Open a pull request describing the changes and how they were tested.
+
 ## Pull Request Process
 
 1. Fork the repository

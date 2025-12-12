@@ -18,7 +18,16 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Set
 
 from .coords import Coord, CoordAssigner, COORDINATE_SCHEMA, IR_SCHEMA_VERSION
-from .ir import Node, Relation, Fork, ForkOption, Provenance, SourceInfo
+from .ir import (
+    Node,
+    Relation,
+    Fork,
+    ForkOption,
+    Provenance,
+    SourceInfo,
+    Derivation,
+    TemporalAlignment,
+)
 
 
 # =============================================================================
@@ -32,7 +41,7 @@ class ProgramBuilder:
     Provides O(1) lookups via indices. No direct access to internal state.
     """
     
-    VERSION = "0.5.2"
+    VERSION = "0.5.3"
     
     def __init__(self, source: SourceInfo):
         self.source = source
@@ -43,6 +52,8 @@ class ProgramBuilder:
         self._relations: List[Relation] = []
         self._forks: List[Fork] = []
         self._provenance: Dict[str, Provenance] = {}
+        self._derivations: List[Derivation] = []
+        self._temporal_alignments: List[TemporalAlignment] = []
         
         # Indices for O(1) lookup
         self._content_hashes: Dict[str, str] = {}  # content_hash -> node_id
@@ -143,6 +154,25 @@ class ProgramBuilder:
             raise ValueError(f"Relation references unknown provenance: {rel.prov_id}")
         
         self._relations.append(rel)
+
+    def add_derivation(self, derivation: Derivation) -> None:
+        """Add a derivation record with validation."""
+        if derivation.prov_id not in self._provenance:
+            raise ValueError(f"Derivation references unknown provenance: {derivation.prov_id}")
+        if derivation.result_id not in self._nodes:
+            raise ValueError(f"Derivation result not found: {derivation.result_id}")
+        for operand in derivation.operands:
+            if operand not in self._nodes:
+                raise ValueError(f"Derivation operand not found: {operand}")
+        self._derivations.append(derivation)
+
+    def add_temporal_alignment(self, alignment: TemporalAlignment) -> None:
+        """Add temporal alignment between nodes."""
+        if alignment.prov_id not in self._provenance:
+            raise ValueError(f"Temporal alignment references unknown provenance: {alignment.prov_id}")
+        if alignment.subject_id not in self._nodes or alignment.reference_id not in self._nodes:
+            raise ValueError("Temporal alignment nodes must exist in program")
+        self._temporal_alignments.append(alignment)
     
     def add_fork(self, fork: Fork) -> None:
         """Add a fork. Validates references."""
@@ -170,6 +200,8 @@ class ProgramBuilder:
             source=self.source,
             nodes=dict(self._nodes),
             relations=list(self._relations),
+            derivations=list(self._derivations),
+            temporal_alignments=list(self._temporal_alignments),
             forks=list(self._forks),
             provenance=dict(self._provenance),
             stats=dict(self._stats),
@@ -190,6 +222,8 @@ class Program:
     source: SourceInfo
     nodes: Dict[str, Node]
     relations: List[Relation]
+    derivations: List[Derivation]
+    temporal_alignments: List[TemporalAlignment]
     forks: List[Fork]
     provenance: Dict[str, Provenance]
     stats: Dict[str, int]
@@ -222,6 +256,8 @@ class Program:
             "counts": {
                 "nodes": len(self.nodes),
                 "relations": len(self.relations),
+                "derivations": len(self.derivations),
+                "temporal_alignments": len(self.temporal_alignments),
                 "forks": len(self.forks),
                 "provenance": len(self.provenance),
             },
@@ -254,6 +290,18 @@ class Program:
         with open(out / "relations.jsonl", "w") as f:
             for rel in sorted(self.relations, key=lambda r: r.sort_key):
                 f.write(json.dumps(rel.to_dict(), sort_keys=True) + "\n")
+
+        # Derivations
+        if self.derivations:
+            with open(out / "derivations.jsonl", "w") as f:
+                for deriv in sorted(self.derivations, key=lambda d: d.result_id):
+                    f.write(json.dumps(deriv.to_dict(), sort_keys=True) + "\n")
+
+        # Temporal alignments
+        if self.temporal_alignments:
+            with open(out / "alignments.jsonl", "w") as f:
+                for align in sorted(self.temporal_alignments, key=lambda a: (a.subject_id, a.reference_id)):
+                    f.write(json.dumps(align.to_dict(), sort_keys=True) + "\n")
         
         # Forks (if any)
         if self.forks:
@@ -331,6 +379,26 @@ class Program:
                         relations.append(rel)
                     except (json.JSONDecodeError, ValueError, TypeError) as e:
                         raise ValueError(f"Invalid relation at line {line_num}: {e}") from e
+
+        # Derivations
+        derivations = []
+        derivations_path = p / "derivations.jsonl"
+        if derivations_path.exists():
+            with open(derivations_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        derivations.append(Derivation.from_dict(json.loads(line)))
+
+        # Temporal alignments
+        temporal_alignments = []
+        alignments_path = p / "alignments.jsonl"
+        if alignments_path.exists():
+            with open(alignments_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        temporal_alignments.append(TemporalAlignment.from_dict(json.loads(line)))
         
         # Forks
         forks = []
@@ -369,6 +437,8 @@ class Program:
             source=source,
             nodes=nodes,
             relations=relations,
+            derivations=derivations,
+            temporal_alignments=temporal_alignments,
             forks=forks,
             provenance=provenance,
             stats=manifest.get("stats", {}),
