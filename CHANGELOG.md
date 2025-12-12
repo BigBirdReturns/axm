@@ -18,7 +18,7 @@ All notable changes to AXM will be documented in this file.
 - Defensive handling for cyclic derivations during confidence propagation
 
 
-## [0.5.2] - 2024-12-11
+## [0.5.2] - 2025-12-11
 
 ### Added
 - **Universal Intake Layer** - Auto-routes sources to adapter or compiler path
@@ -51,7 +51,7 @@ STRUCTURED (XBRL, FHIR, etc.)    UNSTRUCTURED (PDF, text)
          └──────→ MERGED SPACE ←────────┘
 ```
 
-## [0.5.1] - 2024-12-11
+## [0.5.1] - 2025-12-11
 
 ### Fixed
 - **Schema version mismatch** - IR_SCHEMA_VERSION now correctly says "0.5"
@@ -71,7 +71,7 @@ STRUCTURED (XBRL, FHIR, etc.)    UNSTRUCTURED (PDF, text)
 - Chunk dataclass has new `context` field for parent heading info
 - 34 tests total (was 30)
 
-## [0.5.0] - 2024-12-11
+## [0.5.0] - 2025-12-11
 
 ### Added
 - **Real incremental compilation** - Only recompile changed chunks, reuse unchanged nodes
@@ -93,7 +93,7 @@ STRUCTURED (XBRL, FHIR, etc.)    UNSTRUCTURED (PDF, text)
 - Coordinate conflicts when copying unchanged nodes in incremental mode
 - Version numbers updated consistently across modules
 
-## [0.4.0] - 2024-12-11
+## [0.4.0] - 2025-12-11
 
 ### Added
 - Thread-safe IDGenerator with namespaced counters
@@ -110,7 +110,7 @@ STRUCTURED (XBRL, FHIR, etc.)    UNSTRUCTURED (PDF, text)
 - Emitter uses public API only (no _nodes access)
 - Program.load() validates all fields
 
-## [0.3.0] - 2024-12-11
+## [0.3.0] - 2025-12-11
 
 Initial foundation release.
 
