@@ -130,6 +130,62 @@ axm diff v1.axm v2.axm
 axm repl output.axm
 ```
 
+## Rust/WASM Runtime
+
+- **Library**: `rust/axm-rs` mirrors the Python query engine (coords, IR validation, semantic queries).
+- **Bindings**: `wasm_bindgen` exports `WasmProgram` so browsers can load zipped `.axm` artifacts and run queries offline.
+- **Demo**: `web/index.html` + `web/app.js` show a load-and-query flow entirely in the browser (no server round-trips).
+
+Build the WebAssembly package and run the static demo:
+
+```bash
+cd web
+npm install
+npm run build:wasm   # outputs web/pkg/* from the Rust crate
+npm run serve         # open http://localhost:8080 and load a zipped .axm
+```
+
+The same Rust engine is available on the CLI:
+
+```bash
+cargo run --manifest-path rust/axm-rs/Cargo.toml -- summary path/to/program.axm
+cargo run --manifest-path rust/axm-rs/Cargo.toml -- query path/to/program.axm 7
+```
+
+### Updating and contributing to the Rust/WASM runtime
+
+If you need to make changes to the Rust crate, rebuild the WASM bindings, and commit the results back to the repo:
+
+1) Build and smoke-test the Rust crate locally
+
+```bash
+cargo build --manifest-path rust/axm-rs/Cargo.toml
+cargo test --manifest-path rust/axm-rs/Cargo.toml  # may require network access
+```
+
+2) Regenerate the browser bindings and check the demo
+
+```bash
+cd web
+npm install
+npm run build:wasm
+npm run serve  # open http://localhost:8080 to manually try a zipped .axm
+```
+
+3) Commit only the source changes (not `target/`, `web/pkg/`, or `node_modules/`)
+
+```bash
+git status
+git add rust/ web/ README.md CHANGELOG.md
+git commit -m "Update Rust/WASM runtime"
+```
+
+4) Push your branch and open a PR
+
+```bash
+git push origin <branch>
+```
+
 ## How It Works
 
 ### 1. Multi-Tier Extraction

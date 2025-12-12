@@ -1,0 +1,11 @@
+{
+  "name": "axm-wasm-demo",
+  "private": true,
+  "scripts": {
+    "build:wasm": "wasm-pack build ../rust/axm-rs --target web --out-dir web/pkg",
+    "serve": "npx http-server ."
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

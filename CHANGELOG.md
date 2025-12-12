@@ -2,6 +2,14 @@
 
 All notable changes to AXM will be documented in this file.
 
+## [0.6.0] - 2024-12-12
+
+### Added
+- Rust crate `axm-rs` that mirrors the Python IR/query semantics and supports CLI usage.
+- WebAssembly bindings via `wasm-bindgen` exposing `load` and `query` for zipped `.axm` artifacts.
+- Browser demo (`web/`) that loads `.axm` files from fetch/file input and queries them client-side.
+- Cross-language tests comparing Rust/WASM output to Python for identical programs.
+
 ## [0.5.2] - 2024-12-11
 
 ### Added
