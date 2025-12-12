@@ -1,5 +1,5 @@
 """
-AXM - Semantic Compiler Foundation (v0.5.2)
+AXM - Semantic Compiler Foundation (v0.5.3)
 
 Compile documents once. Query forever. No LLM at runtime.
 Now with unified intake: structured OR unstructured → same coordinate space.

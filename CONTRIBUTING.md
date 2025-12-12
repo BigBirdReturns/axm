@@ -6,7 +6,7 @@ Thank you for your interest in contributing to AXM!
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/axm.git
+git clone https://github.com/BigBirdReturns/axm.git
 cd axm
 
 # Install in development mode

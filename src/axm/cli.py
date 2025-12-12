@@ -287,8 +287,36 @@ def cmd_chat(args):
     chat_repl(args.program, model=args.model, use_mock=args.mock)
 
 
+
 def cmd_derive(args):
-    """Perform numeric derivations and report propagated confidence."""
+    """Numeric derivations (default) or derivation passes (materialize)."""
+    if getattr(args, "pass_kind", None):
+        from axm.program import Program
+        from axm.derive import DerivationEngine
+
+        program = Program.load(args.program)
+        engine = DerivationEngine(program)
+        result = engine.run(args.pass_kind)
+
+        out = args.output
+        if out is None or str(out).strip() == "":
+            out = args.program.rstrip("/")
+            out = out + f".derived.{args.pass_kind}"
+        result.program.write(out)
+
+        print(json.dumps({
+            "mode": "pass",
+            "kind": args.pass_kind,
+            "input": args.program,
+            "output": out,
+            "stats": result.stats,
+        }, indent=2, sort_keys=True))
+        return
+
+    # Numeric mode
+    if not args.operands or len(args.operands) < 1:
+        raise SystemExit("Numeric derive requires at least one operand. Provide operands or use --pass-kind.")
+
     program = load(args.program)
     space = query(program)
 
@@ -307,9 +335,10 @@ def cmd_derive(args):
     print(f"  confidence: {conf:.2f}")
 
 
-def main():
+def main(
+):
     parser = argparse.ArgumentParser(description="AXM Semantic Compiler")
-    parser.add_argument("--version", action="version", version=f"AXM 0.5.2")
+    parser.add_argument("--version", action="version", version=f"AXM 0.5.3")
     
     sub = parser.add_subparsers(dest="command")
     
@@ -348,13 +377,17 @@ def main():
     ch.add_argument("--model", default="llama3", help="Ollama model")
     ch.add_argument("--mock", action="store_true", help="Use mock LLM")
 
-    drv = sub.add_parser("derive", help="Derive new values using existing nodes")
-    drv.add_argument("program")
-    drv.add_argument("--operator", default="add", choices=["add", "subtract", "multiply", "divide", "average", "ratio"],
-                     help="Derivation operator")
-    drv.add_argument("operands", nargs="+", help="Node IDs or label fragments to use as operands")
-    drv.add_argument("--unit", help="Override unit for the derived output")
     
+    drv = sub.add_parser("derive", help="Derive new values (numeric) or run derivation passes that materialize new program artifacts")
+    drv.add_argument("program")
+    drv.add_argument("--pass-kind", dest="pass_kind", default=None, choices=["temporal", "confidence"],
+                 help="Run a derivation pass and write a derived program directory")
+    drv.add_argument("-o", "--output", default=None, help="Output directory for pass-kind mode (default: <program>.derived.<pass-kind>)")
+
+    drv.add_argument("--operator", default="add", choices=["add", "subtract", "multiply", "divide", "average", "ratio"],
+                 help="Numeric derivation operator (used when --pass-kind is not set)")
+    drv.add_argument("operands", nargs="*", help="Node IDs or label fragments to use as operands (numeric mode)")
+    drv.add_argument("--unit", help="Override unit for the derived output (numeric mode)")
     args = parser.parse_args()
     
     cmds = {
