@@ -2,6 +2,24 @@
 
 All notable changes to AXM will be documented in this file.
 
+## [0.5.3] - 2024-12-12
+
+Derivation, temporal alignment, and confidence propagation are now part of the shipped CLI and query engine.
+
+### Added
+- Derivation primitives and temporal alignment operators in IR (`derivations.jsonl`, `alignments.jsonl`)
+- Confidence propagation in the query engine with derivation and relation-aware rules
+- `axm derive` CLI command for on-demand arithmetic with propagated confidence output
+- Example documenting `derive` usage and new helper methods
+
+### Changed
+- Program manifests include derivation/alignment counts and persist new sections on write/load
+- README updated with derivation workflow and query helper examples
+
+### Fixed
+- Defensive handling for cyclic derivations during confidence propagation
+
+
 ## [0.5.2] - 2024-12-11
 
 ### Added

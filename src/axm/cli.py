@@ -287,9 +287,29 @@ def cmd_chat(args):
     chat_repl(args.program, model=args.model, use_mock=args.mock)
 
 
+def cmd_derive(args):
+    """Perform numeric derivations and report propagated confidence."""
+    program = load(args.program)
+    space = query(program)
+
+    value, conf, nodes = space.derive_numeric(args.operator, args.operands)
+
+    print(f"\nDerivation: {args.operator.upper()}")
+    for node in nodes:
+        node_conf = space.confidence(node.id)
+        val = f" = {node.value}" if node.value is not None else ""
+        print(f"  {node.id}: {node.label}{val} (confidence {node_conf:.2f})")
+
+    print("\nResult:")
+    unit = args.unit or (nodes[0].unit if nodes else "")
+    unit_str = f" {unit}" if unit else ""
+    print(f"  value: {value}{unit_str}")
+    print(f"  confidence: {conf:.2f}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="AXM Semantic Compiler")
-    parser.add_argument("--version", action="version", version=f"AXM 0.5.2")
+    parser.add_argument("--version", action="version", version=f"AXM 0.5.3")
     
     sub = parser.add_subparsers(dest="command")
     
@@ -327,13 +347,20 @@ def main():
     ch.add_argument("program")
     ch.add_argument("--model", default="llama3", help="Ollama model")
     ch.add_argument("--mock", action="store_true", help="Use mock LLM")
+
+    drv = sub.add_parser("derive", help="Derive new values using existing nodes")
+    drv.add_argument("program")
+    drv.add_argument("--operator", default="add", choices=["add", "subtract", "multiply", "divide", "average", "ratio"],
+                     help="Derivation operator")
+    drv.add_argument("operands", nargs="+", help="Node IDs or label fragments to use as operands")
+    drv.add_argument("--unit", help="Override unit for the derived output")
     
     args = parser.parse_args()
     
     cmds = {
         "compile": cmd_compile, "query": cmd_query, "info": cmd_info,
-        "inspect": cmd_inspect, "stats": cmd_stats, "diff": cmd_diff, 
-        "repl": cmd_repl, "chat": cmd_chat,
+        "inspect": cmd_inspect, "stats": cmd_stats, "diff": cmd_diff,
+        "repl": cmd_repl, "chat": cmd_chat, "derive": cmd_derive,
     }
     
     if args.command in cmds:

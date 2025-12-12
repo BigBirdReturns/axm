@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple
 
 from .coords import Coord, Major
-from .ir import Node, Relation, Fork
+from .ir import Node, Relation, Fork, Derivation, TemporalAlignment, DERIVATION_OPERATORS
 from .program import Program
 
 
@@ -39,7 +39,7 @@ class Space:
     
     def __init__(self, program: Program):
         self.program = program
-        
+
         # Index by major category
         self._by_major: Dict[int, List[Node]] = {}
         for node in program.nodes.values():
@@ -59,6 +59,17 @@ class Space:
             if rel.object_id not in self._incoming:
                 self._incoming[rel.object_id] = []
             self._incoming[rel.object_id].append(rel)
+
+        # Derivations and alignments
+        self._derivations_by_result: Dict[str, List[Derivation]] = {}
+        for deriv in getattr(program, "derivations", []) or []:
+            self._derivations_by_result.setdefault(deriv.result_id, []).append(deriv)
+
+        self._alignments_by_subject: Dict[str, List[TemporalAlignment]] = {}
+        for alignment in getattr(program, "temporal_alignments", []) or []:
+            self._alignments_by_subject.setdefault(alignment.subject_id, []).append(alignment)
+
+        self._confidence_cache: Dict[str, float] = {}
     
     # =========================================================================
     # BASIC QUERIES
@@ -167,6 +178,134 @@ class Space:
     def incoming(self, node_id: str) -> Iterator[Relation]:
         """Get incoming relations to a node."""
         yield from self._incoming.get(node_id, [])
+
+    # =========================================================================
+    # CONFIDENCE PROPAGATION
+    # =========================================================================
+
+    def _base_confidence(self, node_id: str) -> float:
+        node = self.get(node_id)
+        if not node:
+            return 0.0
+        prov = self.program.provenance.get(node.prov_id)
+        if prov is None:
+            return 1.0
+        try:
+            return max(0.0, min(1.0, float(prov.confidence)))
+        except (TypeError, ValueError):
+            return 1.0
+
+    def confidence(self, node_id: str, visited: Optional[Set[str]] = None) -> float:
+        """Propagate confidence across derivations and supporting relations."""
+        if node_id in self._confidence_cache:
+            return self._confidence_cache[node_id]
+
+        if visited is None:
+            visited = set()
+        if node_id in visited:
+            # Cycle detected, fall back to base confidence
+            return self._base_confidence(node_id)
+        visited.add(node_id)
+
+        base = self._base_confidence(node_id)
+        best = base
+
+        # Propagate from derivations
+        for deriv in self._derivations_by_result.get(node_id, []):
+            operand_confidences = []
+            for operand in deriv.operands:
+                operand_confidences.append(self.confidence(operand, visited))
+            if not operand_confidences:
+                continue
+            operator_weight = {
+                "ADD": 0.97,
+                "SUBTRACT": 0.95,
+                "MULTIPLY": 0.9,
+                "DIVIDE": 0.88,
+                "AVERAGE": 0.96,
+                "RATIO": 0.9,
+                "TEMPORAL_ALIGN": 0.92,
+            }.get(deriv.operator, 0.9)
+            candidate = min(min(operand_confidences), deriv.confidence * operator_weight)
+            best = max(best, candidate)
+
+        # Propagate from supporting relations
+        for rel in self._incoming.get(node_id, []):
+            if rel.predicate in {"DERIVED_FROM", "SUPPORTS", "SAME_AS"}:
+                upstream = self.confidence(rel.subject_id, visited)
+                candidate = min(upstream, rel.confidence)
+                best = max(best, candidate)
+
+        best = max(0.0, min(1.0, best))
+        self._confidence_cache[node_id] = best
+        return best
+
+    # =========================================================================
+    # TEMPORAL ALIGNMENT
+    # =========================================================================
+
+    def temporal_alignments(self, subject_id: str) -> List[TemporalAlignment]:
+        """Return temporal alignments for a subject node."""
+        return list(self._alignments_by_subject.get(subject_id, []))
+
+    # =========================================================================
+    # DERIVATION HELPERS
+    # =========================================================================
+
+    def derive_numeric(self, operator: str, operands: List[str]) -> Tuple[float, float, List[Node]]:
+        """Perform simple numeric derivations using node IDs or label fragments."""
+        if operator.upper() not in DERIVATION_OPERATORS:
+            raise ValueError(f"Unsupported operator: {operator}")
+
+        resolved: List[Node] = []
+        for ref in operands:
+            node = self.get(ref)
+            if node is None:
+                node = self.first(label_contains=ref)
+            if node is None:
+                raise ValueError(f"Operand not found: {ref}")
+            if node.value is None:
+                raise ValueError(f"Operand lacks numeric value: {ref}")
+            try:
+                float(node.value)
+            except (TypeError, ValueError):
+                raise ValueError(f"Operand not numeric: {ref}")
+            resolved.append(node)
+
+        values = [float(n.value) for n in resolved]
+        if operator.upper() == "ADD":
+            value = sum(values)
+        elif operator.upper() == "SUBTRACT":
+            value = values[0] - sum(values[1:])
+        elif operator.upper() == "MULTIPLY":
+            value = 1.0
+            for v in values:
+                value *= v
+        elif operator.upper() == "DIVIDE":
+            value = values[0]
+            for v in values[1:]:
+                if v == 0:
+                    raise ZeroDivisionError("Cannot divide by zero in derivation")
+                value /= v
+        elif operator.upper() in {"AVERAGE", "RATIO"}:  # ratio treated as average for now
+            value = sum(values) / len(values)
+        elif operator.upper() == "TEMPORAL_ALIGN":
+            value = values[0]
+        else:
+            raise ValueError(f"Unsupported operator: {operator}")
+
+        confs = [self.confidence(n.id) for n in resolved]
+        op_weight = {
+            "ADD": 0.97,
+            "SUBTRACT": 0.95,
+            "MULTIPLY": 0.9,
+            "DIVIDE": 0.88,
+            "AVERAGE": 0.96,
+            "RATIO": 0.9,
+            "TEMPORAL_ALIGN": 0.92,
+        }.get(operator.upper(), 0.9)
+        combined_confidence = min(confs + [op_weight])
+        return value, combined_confidence, resolved
     
     def traverse(
         self,

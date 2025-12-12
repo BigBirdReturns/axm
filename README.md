@@ -3,6 +3,7 @@
 **Compile once. Query forever. No LLM at runtime.**
 
 AXM transforms documents into queryable semantic programs. Like a traditional compiler transforms source code into executables, AXM transforms text into structured knowledge graphs that can be queried without any neural network.
+> **Current release:** **0.5.3** adds derivation primitives, temporal alignment helpers, and confidence propagation across the query engine and CLI.
 
 ## Why AXM?
 
@@ -50,7 +51,7 @@ for node in space.query(label_contains="revenue"):
     print(f"{node.id}: {node.label}")
 ```
 
-## Universal Intake (v0.5.2)
+## Universal Intake (since v0.5.2)
 
 AXM auto-routes sources to the optimal processing path:
 
@@ -128,6 +129,28 @@ axm diff v1.axm v2.axm
 
 # Interactive exploration
 axm repl output.axm
+
+# Derive new values with propagated confidence
+axm derive output.axm --operator add revenue expenses
+```
+
+The `derive` command resolves operands by ID or label match, applies arithmetic (add, subtract, multiply, divide, average, ratio), and reports a propagated confidence score based on provenance, derivations, and supporting relations.
+
+## Derivations & Temporal Alignment (v0.5.3)
+
+The core IR now records derivation steps (`derivations.jsonl`) and temporal alignment operators (`alignments.jsonl`). The query engine exposes them through helper methods:
+
+```python
+from axm import load, query
+
+space = query(load("report.axm"))
+profit = space.first(label_contains="profit")
+
+# Propagated confidence combines provenance and derivation lineage
+print(space.confidence(profit.id))
+
+# Check temporal alignments for a node
+print(space.temporal_alignments(profit.id))
 ```
 
 ## How It Works
