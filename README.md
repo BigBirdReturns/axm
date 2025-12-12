@@ -130,6 +130,28 @@ axm diff v1.axm v2.axm
 axm repl output.axm
 ```
 
+## Rust/WASM Runtime
+
+- **Library**: `rust/axm-rs` mirrors the Python query engine (coords, IR validation, semantic queries).
+- **Bindings**: `wasm_bindgen` exports `WasmProgram` so browsers can load zipped `.axm` artifacts and run queries offline.
+- **Demo**: `web/index.html` + `web/app.js` show a load-and-query flow entirely in the browser (no server round-trips).
+
+Build the WebAssembly package and run the static demo:
+
+```bash
+cd web
+npm install
+npm run build:wasm   # outputs web/pkg/* from the Rust crate
+npm run serve         # open http://localhost:8080 and load a zipped .axm
+```
+
+The same Rust engine is available on the CLI:
+
+```bash
+cargo run --manifest-path rust/axm-rs/Cargo.toml -- summary path/to/program.axm
+cargo run --manifest-path rust/axm-rs/Cargo.toml -- query path/to/program.axm 7
+```
+
 ## How It Works
 
 ### 1. Multi-Tier Extraction
