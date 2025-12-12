@@ -214,6 +214,14 @@ PREDICATES = {
     "EXTRACTED_FROM", "CITED_IN",
 }
 
+DERIVATION_OPERATORS = {
+    "ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "AVERAGE", "RATIO", "TEMPORAL_ALIGN",
+}
+
+TEMPORAL_ALIGNMENT_OPERATORS = {
+    "ALIGN_START", "ALIGN_END", "OVERLAP", "CONTAINS", "MATCH", "OFFSET",
+}
+
 
 @dataclass(frozen=True)
 class Relation:
@@ -259,6 +267,110 @@ class Relation:
             object_id=d["object"],
             prov_id=d["prov_id"],
             confidence=d.get("confidence", 1.0),
+        )
+
+
+# =============================================================================
+# DERIVATION
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class Derivation:
+    """Represents how a node value was derived from inputs."""
+
+    result_id: str
+    operands: Tuple[str, ...]
+    operator: str
+    prov_id: str
+    confidence: float = 1.0
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if not self.operands:
+            raise ValueError("Derivation requires at least one operand")
+        if self.operator not in DERIVATION_OPERATORS:
+            raise ValueError(f"Invalid derivation operator: {self.operator}")
+        if not self.result_id:
+            raise ValueError("Derivation requires result_id")
+
+    def to_dict(self) -> Dict[str, Any]:
+        data = {
+            "result": self.result_id,
+            "operands": list(self.operands),
+            "operator": self.operator,
+            "prov_id": self.prov_id,
+            "confidence": self.confidence,
+        }
+        if self.metadata:
+            data["metadata"] = self.metadata
+        return data
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "Derivation":
+        _require(d, "result", str)
+        _require(d, "operands", list)
+        _require(d, "operator", str)
+        _require(d, "prov_id", str)
+
+        return cls(
+            result_id=d["result"],
+            operands=tuple(str(o) for o in d["operands"]),
+            operator=d["operator"],
+            prov_id=d["prov_id"],
+            confidence=float(d.get("confidence", 1.0)),
+            metadata=d.get("metadata", {}),
+        )
+
+
+# =============================================================================
+# TEMPORAL ALIGNMENT
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class TemporalAlignment:
+    """Alignment operator connecting a subject node to a temporal reference."""
+
+    subject_id: str
+    reference_id: str
+    operator: str
+    prov_id: str
+    offset: Optional[float] = None
+    confidence: float = 1.0
+
+    def __post_init__(self):
+        if not self.subject_id or not self.reference_id:
+            raise ValueError("TemporalAlignment requires subject and reference IDs")
+        if self.operator not in TEMPORAL_ALIGNMENT_OPERATORS:
+            raise ValueError(f"Invalid temporal operator: {self.operator}")
+
+    def to_dict(self) -> Dict[str, Any]:
+        data = {
+            "subject": self.subject_id,
+            "reference": self.reference_id,
+            "operator": self.operator,
+            "prov_id": self.prov_id,
+            "confidence": self.confidence,
+        }
+        if self.offset is not None:
+            data["offset"] = self.offset
+        return data
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "TemporalAlignment":
+        _require(d, "subject", str)
+        _require(d, "reference", str)
+        _require(d, "operator", str)
+        _require(d, "prov_id", str)
+
+        return cls(
+            subject_id=d["subject"],
+            reference_id=d["reference"],
+            operator=d["operator"],
+            prov_id=d["prov_id"],
+            offset=d.get("offset"),
+            confidence=float(d.get("confidence", 1.0)),
         )
 
 
